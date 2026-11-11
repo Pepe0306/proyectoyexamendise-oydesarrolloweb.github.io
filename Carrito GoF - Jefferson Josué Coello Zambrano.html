@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pasarela de Pago & Carrito GoF - Jefferson Josué Coello Zambrano | 3ro BGU Informática</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config={theme:{extend:{colors:{xl:{50:'#f2f9f5',100:'#e1f1e7',200:'#c3e2cf',300:'#9bcdb0',500:'#2e9d5f',600:'#217346',700:'#1b5e3a',800:'#185c37',900:'#124a2c',950:'#0a2e1b'}},fontFamily:{sans:['Inter','Segoe UI','sans-serif'],mono:['IBM Plex Mono','Consolas','monospace']}}}};
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{font-family:'Inter','Segoe UI',sans-serif;background:radial-gradient(900px 500px at 8% -5%,#dff1e6 0,transparent 60%),radial-gradient(700px 500px at 100% 30%,#e9f6ee 0,transparent 60%),#fff;padding-bottom:40px}
+code,pre,.font-mono{font-family:'IBM Plex Mono',Consolas,monospace}
+.custom-scrollbar::-webkit-scrollbar{width:6px;height:6px}
+.custom-scrollbar::-webkit-scrollbar-track{background:#0a2e1b}
+.custom-scrollbar::-webkit-scrollbar-thumb{background:#2e9d5f;border-radius:9999px}
+.card{background:#fff;border:1px solid #c3e2cf;border-radius:16px;box-shadow:0 1px 2px rgba(18,74,44,.06),0 10px 30px -12px rgba(18,74,44,.18)}
+.lift{transition:transform .25s,box-shadow .25s,border-color .25s}
+.lift:hover{transform:translateY(-4px);border-color:#2e9d5f;box-shadow:0 18px 40px -14px rgba(33,115,70,.38)}
+.lift .art{transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.lift:hover .art{transform:scale(1.08) rotate(-2deg)}
+.hero-grid{background-image:linear-gradient(rgba(255,255,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.07) 1px,transparent 1px);background-size:64px 24px}
+.modal-backdrop{background:rgba(10,46,27,.6);backdrop-filter:blur(3px)}
+input:focus,select:focus{outline:2px solid #217346;outline-offset:1px}
+input[type=checkbox]{accent-color:#217346;width:16px;height:16px}
+@keyframes flash{from{background:#b9e8cb}to{background:transparent}}
+.flash{animation:flash 1s ease-out}
+@keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.5)}100%{transform:scale(1)}}
+.bump{animation:bump .35s ease-out}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.rise{animation:rise .7s cubic-bezier(.2,.8,.2,1) both}
+@keyframes pop{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+#checkout-modal>div{animation:pop .25s ease-out}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+
+<body class="min-h-full flex flex-col text-xl-950 antialiased">
+
+<header class="sticky top-0 z-30 bg-gradient-to-r from-xl-700 to-xl-600 text-white shadow-lg">
+ <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  <div class="flex flex-wrap items-center justify-between gap-3 py-3">
+   <div class="flex items-center gap-3.5">
+    <div class="p-2.5 bg-white text-xl-600 rounded-xl shadow-md"><i data-i="table" class="w-6 h-6 block"></i></div>
+    <div>
+     <div class="flex flex-wrap items-center gap-2 text-xs font-semibold">
+      <span class="px-2.5 py-0.5 rounded-full bg-white text-xl-700">Durán - Ecuador</span>
+      <span class="px-2.5 py-0.5 rounded-full bg-xl-800/80 text-xl-100 border border-xl-500">Periodo 2026-2027</span>
+     </div>
+     <h1 class="text-base sm:text-lg font-bold tracking-tight mt-1">UEF Gral. Eloy Alfaro Delgado</h1>
+    </div>
+   </div>
+   <div class="flex items-center gap-4">
+    <div class="hidden md:block text-right border-r border-xl-500 pr-4">
+     <span class="text-[11px] text-xl-100 font-medium block">Examen de Diseño y Desarrollo Web</span>
+     <span class="text-xs font-bold">Estudiante: Jefferson Josué Coello Zambrano</span>
+    </div>
+    <nav class="flex gap-1 bg-xl-900/40 p-1 rounded-xl">
+     <button id="tab-btn-simulador" onclick="switchTab('simulador')" class="px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-white text-xl-700 flex items-center gap-2"><i data-i="cart" class="w-4 h-4"></i>Tienda & Carrito</button>
+     <button id="tab-btn-docs" onclick="switchTab('docs')" class="px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-white hover:bg-xl-800 flex items-center gap-2"><i data-i="code" class="w-4 h-4"></i>Patrones GoF</button>
+    </nav>
+   </div>
+  </div>
+ </div>
+</header>
+
+<main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+<section id="tab-simulador" class="space-y-8">
+
+ <div class="rise relative overflow-hidden rounded-3xl bg-gradient-to-br from-xl-950 via-xl-800 to-xl-600 text-white p-6 sm:p-9 shadow-2xl">
+  <div class="hero-grid absolute inset-0"></div>
+  <div class="absolute -right-16 -top-16 w-72 h-72 rounded-full bg-xl-300/20 blur-3xl"></div>
+  <div class="relative flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+   <div class="space-y-3">
+    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-white text-xl-700"><i data-i="cpu" class="w-3.5 h-3.5"></i>Evaluación Práctica • 3ro BGU Técnico en Informática</div>
+    <h2 class="text-2xl sm:text-4xl font-extrabold tracking-tight max-w-3xl leading-tight">Sistema de Carrito con Pasarela y Facturación Electrónica</h2>
+    <p class="text-xs sm:text-sm text-xl-100 max-w-3xl leading-relaxed">
+     Módulo web desarrollado en Vanilla JS aplicando patrones GoF:
+     <strong class="text-white underline decoration-xl-300 underline-offset-4">Strategy</strong> (descuentos dinámicos),
+     <strong class="text-white underline decoration-xl-300 underline-offset-4">Decorator</strong> (servicios adicionales) y
+     <strong class="text-white underline decoration-xl-300 underline-offset-4">Observer</strong> (notificaciones y auditoría).
+    </p>
+   </div>
+   <div class="bg-white/95 text-xl-950 p-4 rounded-2xl text-xs space-y-1.5 min-w-[230px] shadow-xl">
+    <div class="flex justify-between gap-4"><span>Curso:</span><strong>3ro BGU Informática</strong></div>
+    <div class="flex justify-between gap-4"><span>Docente:</span><strong>MSc. Julio Nilve</strong></div>
+    <div class="flex justify-between gap-4"><span>Archivo:</span><strong class="text-xl-700 font-mono">Coello_Jefferson_3BGU_Carrito.html</strong></div>
+   </div>
+  </div>
+ </div>
+
+ <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+  <div class="lg:col-span-7 xl:col-span-8 space-y-6">
+   <div class="flex items-center justify-between">
+    <h3 class="font-bold text-lg flex items-center gap-2"><i data-i="grid" class="w-5 h-5 text-xl-600"></i>Catálogo Tecnológico</h3>
+    <span class="text-xs font-semibold text-xl-700 bg-xl-100 px-3 py-1 rounded-full border border-xl-300">6 Productos Disponibles</span>
+   </div>
+
+   <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+
+   <div class="card overflow-hidden">
+    <div class="flex items-center justify-between px-4 py-2.5 bg-xl-900 text-white">
+     <div class="flex items-center gap-2">
+      <span class="flex gap-1"><i class="h-2.5 w-2.5 rounded-full bg-xl-300 block"></i><i class="h-2.5 w-2.5 rounded-full bg-xl-500 block"></i><i class="h-2.5 w-2.5 rounded-full bg-xl-600 block"></i></span>
+      <h4 class="text-xs font-mono font-semibold ml-1">Observer Live Console (LoggerObserver)</h4>
+     </div>
+     <button onclick="clearConsoleLog()" class="text-xs text-xl-200 hover:text-white flex items-center gap-1"><i data-i="trash" class="w-3.5 h-3.5"></i>Limpiar Logs</button>
+    </div>
+    <div id="observer-logs" class="font-mono text-[11px] bg-xl-950 p-3.5 h-36 overflow-y-auto space-y-1.5 custom-scrollbar">
+     <div class="text-xl-300/60">// Consola inicializada. Sujeto CartSubject registrado...</div>
+    </div>
+   </div>
+  </div>
+
+  <div class="lg:col-span-5 xl:col-span-4">
+   <div class="card sticky top-28 overflow-hidden">
+    <div class="flex items-center justify-between px-5 py-3.5 bg-gradient-to-r from-xl-700 to-xl-600 text-white">
+     <div class="flex items-center gap-2">
+      <h3 class="text-base font-bold">Carrito de Compras</h3>
+      <span id="cart-badge-count" class="bg-white text-xl-700 text-[11px] font-bold px-2 py-0.5 rounded-full font-mono">0</span>
+     </div>
+     <button onclick="clearCart()" class="text-xs text-xl-100 hover:text-white font-semibold underline underline-offset-2">Vaciar</button>
+    </div>
+    <div class="flex items-stretch border-b border-xl-200 bg-xl-50 text-[11px]">
+     <span class="px-3 py-1.5 font-bold italic text-xl-700 border-r border-xl-200 bg-white">fx</span>
+     <span id="formula-bar" class="px-3 py-1.5 font-mono text-xl-800 truncate">=(0.00 − 0.00 + 0.00) × 1.15</span>
+    </div>
+
+    <div class="p-5 sm:p-6 space-y-5">
+    <div id="cart-items" class="space-y-3 max-h-60 overflow-y-auto border-b border-xl-200 pb-3"></div>
+
+    <div class="space-y-2">
+     <label class="block text-xs font-bold text-xl-700">Estrategia de Descuento (Strategy)</label>
+     <select id="discount-strategy-select" onchange="onStrategyChange(this.value)" class="w-full bg-xl-50 border border-xl-300 rounded-lg px-3 py-2 text-xs">
+      <option value="NONE">Sin Descuento</option>
+      <option value="PERCENTAGE_10">10% Descuento Estudiantil</option>
+      <option value="TWO_FOR_ONE">Promoción 2x1 (ítem menor gratis)</option>
+      <option value="FIXED_15">Cupón -$15.00 (PROMO2026)</option>
+     </select>
+    </div>
+
+    <div class="space-y-2 pt-2 border-t border-xl-200">
+     <label class="block text-xs font-bold text-xl-700">Servicios Opcionales (Decorator)</label>
+     <label class="flex items-center justify-between p-2.5 rounded-lg bg-xl-50 border border-xl-200 text-xs hover:bg-xl-100 cursor-pointer"><span class="flex items-center gap-2"><input type="checkbox" id="decorator-gift" onchange="onDecoratorsChange()">Empaque Especial de Regalo</span><strong class="text-xl-700">+$2.50</strong></label>
+     <label class="flex items-center justify-between p-2.5 rounded-lg bg-xl-50 border border-xl-200 text-xs hover:bg-xl-100 cursor-pointer"><span class="flex items-center gap-2"><input type="checkbox" id="decorator-insurance" onchange="onDecoratorsChange()">Seguro de Envío Protegido</span><strong class="text-xl-700">+$3.00</strong></label>
+     <label class="flex items-center justify-between p-2.5 rounded-lg bg-xl-50 border border-xl-200 text-xs hover:bg-xl-100 cursor-pointer"><span class="flex items-center gap-2"><input type="checkbox" id="decorator-shipping" onchange="onDecoratorsChange()">Envío Exprés Prioritario</span><strong class="text-xl-700">+$5.00</strong></label>
+    </div>
+
+    <div class="pt-3 border-t border-xl-200 space-y-2 text-xs">
+     <div class="flex justify-between text-slate-600"><span>Subtotal Productos:</span><span id="summary-subtotal" class="font-mono">$0.00</span></div>
+     <div class="flex justify-between text-xl-700"><span>Descuento (Strategy):</span><span id="summary-discount" class="font-mono">-$0.00</span></div>
+     <div class="flex justify-between text-xl-600"><span>Adicionales (Decorator):</span><span id="summary-decorators" class="font-mono">+$0.00</span></div>
+     <div class="flex justify-between text-slate-600"><span>IVA Ecuador (15%):</span><span id="summary-tax" class="font-mono">$0.00</span></div>
+     <div class="px-4 py-3 rounded-xl bg-gradient-to-r from-xl-100 to-xl-50 border border-xl-300 flex justify-between items-center text-base font-extrabold">
+      <span>Total Final:</span><span id="summary-total" class="font-mono text-xl-700 text-xl">$0.00</span>
+     </div>
+    </div>
+
+    <button id="btn-proceed-checkout" onclick="openCheckoutModal()" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-xl-600 to-xl-500 hover:from-xl-800 hover:to-xl-600 shadow-lg shadow-xl-600/30 transition-all text-white font-bold text-sm disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed" disabled>
+     <i data-i="card" class="w-4 h-4 inline-block align-[-3px] mr-1"></i>Proceder al Pago
+    </button>
+    </div>
+   </div>
+  </div>
+ </div>
+</section>
+
+<section id="tab-docs" class="hidden space-y-6">
+ <div class="card p-6 sm:p-8">
+  <h2 class="text-xl font-bold mb-2 flex items-center gap-2"><i data-i="file" class="w-5 h-5 text-xl-600"></i>Documentación Técnica de Arquitectura GoF</h2>
+  <p class="text-slate-600 text-sm mb-6">Explicación de los patrones de diseño aplicados en el proyecto mediante JavaScript.</p>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+   <article class="lift bg-white border border-xl-200 rounded-2xl overflow-hidden">
+    <div class="bg-gradient-to-r from-xl-700 to-xl-500 text-white px-5 py-4 flex items-center gap-3"><i data-i="percent" class="w-6 h-6"></i><h3 class="font-bold">Patrón Strategy</h3></div>
+    <div class="p-5 space-y-3"><span class="inline-block text-[10px] font-bold px-2.5 py-1 rounded-full bg-xl-100 text-xl-800 border border-xl-300">Comportamiento</span>
+    <p class="text-xs text-slate-600 leading-relaxed">Encapsula los algoritmos de descuento en estrategias independientes. Permite cambiar entre descuento porcentual, promoción 2x1 y cupón fijo sin modificar el carrito.</p></div>
+   </article>
+   <article class="lift bg-white border border-xl-200 rounded-2xl overflow-hidden">
+    <div class="bg-gradient-to-r from-xl-700 to-xl-500 text-white px-5 py-4 flex items-center gap-3"><i data-i="layers" class="w-6 h-6"></i><h3 class="font-bold">Patrón Decorator</h3></div>
+    <div class="p-5 space-y-3"><span class="inline-block text-[10px] font-bold px-2.5 py-1 rounded-full bg-xl-100 text-xl-800 border border-xl-300">Estructural</span>
+    <p class="text-xs text-slate-600 leading-relaxed">Agrega servicios opcionales al pedido, como empaque, seguro y envío exprés. Cada servicio aumenta el costo sin alterar la estructura original del producto.</p></div>
+   </article>
+   <article class="lift bg-white border border-xl-200 rounded-2xl overflow-hidden">
+    <div class="bg-gradient-to-r from-xl-700 to-xl-500 text-white px-5 py-4 flex items-center gap-3"><i data-i="radio" class="w-6 h-6"></i><h3 class="font-bold">Patrón Observer</h3></div>
+    <div class="p-5 space-y-3"><span class="inline-block text-[10px] font-bold px-2.5 py-1 rounded-full bg-xl-100 text-xl-800 border border-xl-300">Comportamiento</span>
+    <p class="text-xs text-slate-600 leading-relaxed">El carrito notifica a los observadores cuando ocurre un evento, como agregar o quitar un producto. El registro de auditoría muestra estas notificaciones en tiempo real.</p></div>
+   </article>
+  </div>
+  <div class="mt-6 p-4 rounded-xl bg-xl-50 border-l-4 border-xl-600 text-xs text-xl-900"><strong>Nota:</strong> Esta aplicación es una simulación académica. No procesa pagos reales ni emite comprobantes tributarios autorizados.</div>
+ </div>
+</section>
+
+</main>
+
+<footer class="bg-xl-900 text-xl-100 py-5 text-center text-xs">
+ Proyecto académico • Jefferson Josué Coello Zambrano • 3ro BGU Técnico en Informática • Periodo 2026-2027
+</footer>
+
+<div class="fixed bottom-0 inset-x-0 z-40 bg-xl-600 text-white text-[11px] flex items-center justify-between px-4 h-7 shadow-[0_-2px_10px_rgba(0,0,0,.15)]">
+ <span class="flex items-center gap-2"><i class="w-2 h-2 rounded-full bg-xl-300 block"></i>Listo</span>
+ <span class="font-mono">Artículos: <b id="status-count">0</b> &nbsp;|&nbsp; Suma: <b id="status-total">$0.00</b> &nbsp;|&nbsp; Hoja1</span>
+</div>
+
+<div id="checkout-modal" class="hidden fixed inset-0 z-50 modal-backdrop items-center justify-center p-4">
+ <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md relative overflow-hidden">
+  <div class="h-2 bg-gradient-to-r from-xl-700 via-xl-500 to-xl-300"></div>
+  <button onclick="closeCheckoutModal()" class="absolute right-4 top-5 text-slate-400 hover:text-xl-800" aria-label="Cerrar"><i data-i="x" class="w-5 h-5"></i></button>
+  <div class="p-6">
+  <div id="checkout-form-wrap">
+   <div class="flex items-center gap-2 mb-1"><i data-i="card" class="w-5 h-5 text-xl-600"></i><h2 class="text-xl font-bold">Finalizar compra</h2></div>
+   <p class="text-xs text-slate-500 mb-5">Completa los datos de demostración para generar el resumen.</p>
+   <form id="checkout-form" onsubmit="processCheckout(event)" class="space-y-3">
+    <label class="block text-xs font-semibold">Nombre completo<input id="customer-name" required class="mt-1 w-full border border-xl-300 rounded-lg p-2.5 text-sm" placeholder="Nombre y apellido"></label>
+    <label class="block text-xs font-semibold">Correo electrónico<input id="customer-email" type="email" required class="mt-1 w-full border border-xl-300 rounded-lg p-2.5 text-sm" placeholder="correo@ejemplo.com"></label>
+    <label class="block text-xs font-semibold">Método de pago
+     <select id="payment-method" class="mt-1 w-full border border-xl-300 rounded-lg p-2.5 text-sm"><option>Tarjeta (simulación)</option><option>Transferencia (simulación)</option><option>Efectivo contra entrega (simulación)</option></select>
+    </label>
+    <div class="bg-xl-100 border border-xl-300 rounded-xl p-3 flex justify-between text-sm font-bold"><span>Total a pagar:</span><span id="checkout-total" class="text-xl-700">$0.00</span></div>
+    <p class="text-[11px] text-slate-500">No ingreses números de tarjetas ni información bancaria real. Esta demostración no realiza cobros.</p>
+    <button class="w-full bg-gradient-to-r from-xl-600 to-xl-500 hover:from-xl-800 hover:to-xl-600 transition-all text-white font-bold rounded-xl py-3 text-sm shadow-lg shadow-xl-600/30">Confirmar pedido de prueba</button>
+   </form>
+  </div>
+  <div id="checkout-success" class="hidden text-center py-5">
+   <div class="mx-auto w-16 h-16 rounded-full bg-xl-600 text-white flex items-center justify-center mb-4 shadow-lg shadow-xl-600/40"><i data-i="check" class="w-8 h-8"></i></div>
+   <h2 class="text-xl font-bold mb-2">¡Pedido registrado!</h2>
+   <p id="success-message" class="text-sm text-slate-600 mb-4"></p>
+   <div id="invoice-summary" class="text-left bg-xl-50 border border-xl-200 rounded-xl p-4 text-xs space-y-1 mb-4"></div>
+   <button onclick="finishOrder()" class="w-full bg-xl-600 hover:bg-xl-800 text-white rounded-xl py-3 text-sm font-bold">Finalizar</button>
+  </div>
+  </div>
+ </div>
+</div>
+
+<script>
+/* ---------- Iconos SVG integrados (no dependen de internet) ---------- */
+const ICONS={
+ table:'<path d="M3 5h18v14H3zM3 10h18M3 15h18M9 5v14M15 5v14"/>',
+ cart:'<path d="M3 4h2l2.4 11h10.2L20 7H6"/><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/>',
+ code:'<path d="M8 8l-5 4 5 4M16 8l5 4-5 4M14 5l-4 14"/>',
+ cpu:'<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/>',
+ grid:'<path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/>',
+ trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+ card:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>',
+ percent:'<path d="M19 5L5 19"/><circle cx="7" cy="7" r="2"/><circle cx="17" cy="17" r="2"/>',
+ layers:'<path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/>',
+ radio:'<circle cx="12" cy="12" r="1"/><path d="M8.5 8.5a5 5 0 000 7M15.5 8.5a5 5 0 010 7M5.5 5.5a9 9 0 000 13M18.5 5.5a9 9 0 010 13"/>',
+ file:'<path d="M6 2h8l5 5v15H6zM14 2v5h5M9 13h7M9 17h7"/>',
+ plus:'<path d="M12 5v14M5 12h14"/>',
+ check:'<path d="M5 12l5 5 9-10"/>',
+ x:'<path d="M6 6l12 12M18 6L6 18"/>'
+};
+function hydrate(root=document){
+ root.querySelectorAll('i[data-i]').forEach(el=>{
+  const s=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  s.setAttribute('viewBox','0 0 24 24');s.setAttribute('fill','none');s.setAttribute('stroke','currentColor');
+  s.setAttribute('stroke-width','2');s.setAttribute('stroke-linecap','round');s.setAttribute('stroke-linejoin','round');
+  s.setAttribute('class',el.className);s.innerHTML=ICONS[el.dataset.i]||'';el.replaceWith(s)
+ })
+}
+
+/* ---------- Ilustraciones de productos (SVG propio) ---------- */
+const D='#124a2c',M='#217346',L='#9bcdb0',P='#e1f1e7',Y='#ffd166';
+const ART={
+ 1:()=>`<ellipse cx="60" cy="78" rx="46" ry="5" fill="${D}" opacity=".12"/>
+  <rect x="24" y="10" width="72" height="48" rx="5" fill="${D}"/><rect x="28" y="14" width="64" height="40" rx="2" fill="${P}"/>
+  <rect x="34" y="40" width="8" height="10" fill="${L}"/><rect x="46" y="32" width="8" height="18" fill="${M}"/><rect x="58" y="24" width="8" height="26" fill="${L}"/><rect x="70" y="30" width="8" height="20" fill="${M}"/><rect x="82" y="20" width="6" height="30" fill="${L}"/>
+  <path d="M10 62h100l-8 11H18z" fill="${L}"/><path d="M10 62h100" stroke="${M}" stroke-width="2"/><rect x="48" y="64" width="24" height="3" rx="1.5" fill="${M}"/>`,
+ 2:()=>`<ellipse cx="60" cy="80" rx="26" ry="4" fill="${D}" opacity=".12"/>
+  <rect x="42" y="8" width="36" height="68" rx="18" fill="#fff" stroke="${M}" stroke-width="3"/>
+  <path d="M42 36h36M60 8v28" stroke="${M}" stroke-width="3"/><path d="M42 26a18 18 0 0118-18v28H42z" fill="${L}"/>
+  <rect x="56" y="16" width="8" height="14" rx="4" fill="${D}"/><circle cx="60" cy="56" r="3" fill="${Y}"/>
+  <path d="M88 22a14 14 0 012 14M94 16a22 22 0 013 26" stroke="${M}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+ 3:()=>{let k='';for(let r=0;r<4;r++)for(let c=0;c<10;c++){const w=(r==3&&c>=2&&c<=7)?0:1;if(r==3&&c>2&&c<7)continue;
+   const x=18+c*8.4,y=34+r*9.4,ww=(r==3&&c==2)?40:7;k+=`<rect x="${x}" y="${y}" width="${ww}" height="7" rx="1.5" fill="${(r+c)%5==0?Y:P}"/>`}
+  return `<ellipse cx="60" cy="80" rx="50" ry="4" fill="${D}" opacity=".12"/><path d="M8 30l8-14h88l8 14v40a4 4 0 01-4 4H12a4 4 0 01-4-4z" fill="${D}"/><rect x="12" y="30" width="96" height="4" fill="${M}"/>${k}`},
+ 4:()=>`<ellipse cx="60" cy="82" rx="34" ry="4" fill="${D}" opacity=".12"/>
+  <path d="M26 56V44a34 34 0 0168 0v12" fill="none" stroke="${D}" stroke-width="7" stroke-linecap="round"/>
+  <rect x="16" y="46" width="20" height="32" rx="9" fill="${M}"/><rect x="84" y="46" width="20" height="32" rx="9" fill="${M}"/>
+  <rect x="20" y="52" width="12" height="20" rx="6" fill="${L}"/><rect x="88" y="52" width="12" height="20" rx="6" fill="${L}"/>
+  <circle cx="26" cy="62" r="2.5" fill="${Y}"/><circle cx="94" cy="62" r="2.5" fill="${Y}"/>`,
+ 5:()=>{let g='';for(let i=1;i<6;i++)g+=`<path d="M${22+i*13} 14v36" stroke="${L}" stroke-width="1"/>`;for(let i=1;i<4;i++)g+=`<path d="M22 ${14+i*9}h76" stroke="${L}" stroke-width="1"/>`;
+  return `<ellipse cx="60" cy="82" rx="36" ry="4" fill="${D}" opacity=".12"/><rect x="14" y="6" width="92" height="58" rx="6" fill="${D}"/><rect x="19" y="11" width="82" height="45" rx="2" fill="#fff"/>
+  <rect x="19" y="11" width="82" height="9" fill="${M}"/>${g}<rect x="22" y="38" width="13" height="9" fill="${P}"/><rect x="48" y="29" width="13" height="9" fill="${L}"/><path d="M22 47l26-9 26 0 24-12" stroke="${M}" stroke-width="3" fill="none"/>
+  <path d="M52 64h16l4 12H48z" fill="${M}"/><rect x="38" y="76" width="44" height="5" rx="2.5" fill="${D}"/><circle cx="98" cy="60" r="1.6" fill="${Y}"/>`},
+ 6:()=>`<ellipse cx="60" cy="82" rx="26" ry="4" fill="${D}" opacity=".12"/>
+  <rect x="44" y="6" width="32" height="26" rx="3" fill="${L}" stroke="${M}" stroke-width="2.5"/><rect x="51" y="12" width="6" height="8" rx="1" fill="${D}"/><rect x="63" y="12" width="6" height="8" rx="1" fill="${D}"/>
+  <path d="M40 32h40v38a8 8 0 01-8 8H48a8 8 0 01-8-8z" fill="${M}"/><rect x="46" y="40" width="28" height="18" rx="3" fill="${P}"/>
+  <text x="60" y="53" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" font-weight="800" fill="${D}">64GB</text><circle cx="60" cy="68" r="3" fill="${Y}"/>`
+};
+const art=(id,cls='')=>`<svg viewBox="0 0 120 90" class="${cls}" xmlns="http://www.w3.org/2000/svg">${ART[id]()}</svg>`;
+
+/* ---------- Datos y lógica (patrones GoF) ---------- */
+const products=[
+ {id:1,name:'Laptop Lenovo IdeaPad',category:'Computación',price:649.99,description:'Portátil para estudio y trabajo.'},
+ {id:2,name:'Mouse inalámbrico',category:'Accesorios',price:18.50,description:'Diseño ergonómico y conexión USB.'},
+ {id:3,name:'Teclado mecánico RGB',category:'Accesorios',price:42.00,description:'Teclas cómodas con iluminación.'},
+ {id:4,name:'Audífonos Bluetooth',category:'Audio',price:35.75,description:'Sonido nítido y conexión inalámbrica.'},
+ {id:5,name:'Monitor 24 pulgadas',category:'Computación',price:159.90,description:'Pantalla Full HD para tu escritorio.'},
+ {id:6,name:'Memoria USB 64 GB',category:'Almacenamiento',price:12.99,description:'Almacenamiento portátil y práctico.'}
+];
+
+let cart={},strategy='NONE',decorators={gift:false,insurance:false,shipping:false},lastId=null;
+
+const money=n=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(n);
+const $=id=>document.getElementById(id);
+
+class CartSubject{
+ constructor(){this.observers=[]}
+ subscribe(observer){this.observers.push(observer)}
+ notify(event,detail){this.observers.forEach(o=>o.update(event,detail))}
+}
+class LoggerObserver{
+ update(event,detail){
+  const box=$('observer-logs');const line=document.createElement('div');
+  line.className='text-xl-300';
+  line.textContent=`[${new Date().toLocaleTimeString()}] ${event}: ${detail}`;
+  box.appendChild(line);box.scrollTop=box.scrollHeight
+ }
+}
+const cartSubject=new CartSubject();
+cartSubject.subscribe(new LoggerObserver());
+
+const strategies={
+ NONE:subtotal=>0,
+ PERCENTAGE_10:subtotal=>subtotal*.10,
+ TWO_FOR_ONE:subtotal=>{
+  const prices=Object.entries(cart).flatMap(([id,qty])=>Array(qty).fill(products.find(p=>p.id===Number(id)).price)).sort((a,b)=>a-b);
+  return prices.length>=2?prices[0]*Math.floor(prices.length/2):0
+ },
+ FIXED_15:subtotal=>Math.min(15,subtotal)
+};
+
+function switchTab(tab){
+ ['simulador','docs'].forEach(name=>{
+  $(`tab-${name}`).classList.toggle('hidden',name!==tab);
+  $(`tab-btn-${name}`).className=name===tab?'px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-white text-xl-700 flex items-center gap-2':'px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-white hover:bg-xl-800 flex items-center gap-2'
+ });
+}
+
+function renderProducts(){
+ $('products-grid').innerHTML=products.map((p,i)=>`<article class="lift rise card overflow-hidden flex flex-col" style="animation-delay:${i*70}ms">
+ <div class="relative h-40 bg-gradient-to-b from-xl-50 to-xl-100 flex items-center justify-center border-b border-xl-200">
+  <span class="absolute top-3 left-3 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-xl-700 border border-xl-200">${p.category}</span>
+  ${art(p.id,'art w-36 h-28')}
+ </div>
+ <div class="p-4 flex flex-col flex-grow">
+ <h4 class="font-bold text-sm">${p.name}</h4>
+ <p class="text-xs text-slate-500 mt-1 flex-grow">${p.description}</p>
+ <div class="flex items-center justify-between mt-4">
+ <strong class="font-mono text-base text-xl-800">${money(p.price)}</strong>
+ <button onclick="addToCart(${p.id})" class="bg-gradient-to-r from-xl-600 to-xl-500 hover:from-xl-800 hover:to-xl-600 active:scale-95 transition-all text-white rounded-lg px-3 py-2 text-xs font-bold shadow-md shadow-xl-600/25">
+ <i data-i="plus" class="w-3.5 h-3.5 inline-block align-[-2px]"></i> Agregar</button>
+ </div></div></article>`).join('');
+ hydrate();
+}
+
+function addToCart(id){
+ cart[id]=(cart[id]||0)+1;lastId=id;
+ cartSubject.notify('PRODUCTO AGREGADO',products.find(p=>p.id===id).name);
+ renderCart();
+ const b=$('cart-badge-count');b.classList.remove('bump');void b.offsetWidth;b.classList.add('bump')
+}
+function changeQty(id,delta){
+ cart[id]=(cart[id]||0)+delta;lastId=id;
+ if(cart[id]<=0)delete cart[id];
+ cartSubject.notify('CARRITO ACTUALIZADO',products.find(p=>p.id===id).name);
+ renderCart()
+}
+function clearCart(){
+ if(!Object.keys(cart).length)return;
+ cart={};lastId=null;
+ cartSubject.notify('CARRITO VACIADO','Se eliminaron todos los productos');
+ renderCart()
+}
+function onStrategyChange(value){strategy=value;cartSubject.notify('ESTRATEGIA CAMBIADA',value);renderCart()}
+function onDecoratorsChange(){
+ decorators={gift:$('decorator-gift').checked,insurance:$('decorator-insurance').checked,shipping:$('decorator-shipping').checked};
+ cartSubject.notify('SERVICIOS ACTUALIZADOS','Se modificaron los adicionales');
+ renderCart()
+}
+
+function calculate(){
+ const subtotal=Object.entries(cart).reduce((sum,[id,q])=>sum+products.find(p=>p.id===Number(id)).price*q,0);
+ const discount=strategies[strategy](subtotal);
+ const extras=(decorators.gift?2.5:0)+(decorators.insurance?3:0)+(decorators.shipping?5:0);
+ const taxable=Math.max(0,subtotal-discount)+extras,tax=taxable*.15,total=taxable+tax;
+ return{subtotal,discount,extras,tax,total};
+}
+
+function tween(el,to){
+ const from=el._v||0,t0=performance.now();el._v=to;
+ const step=t=>{const k=Math.min(1,(t-t0)/350),e=1-Math.pow(1-k,3);el.textContent=money(from+(to-from)*e);if(k<1)requestAnimationFrame(step)};
+ requestAnimationFrame(step)
+}
+
+function renderCart(){
+ const entries=Object.entries(cart),count=entries.reduce((s,[,q])=>s+q,0);
+ $('cart-badge-count').textContent=count;
+ $('status-count').textContent=count;
+
+ $('cart-items').innerHTML=entries.length?entries.map(([id,q])=>{
+  const p=products.find(x=>x.id===Number(id));
+  return `<div class="${Number(id)===lastId?'flash ':''}flex items-center gap-3 text-xs rounded-lg p-1.5">
+  <div class="w-12 h-12 shrink-0 rounded-lg bg-xl-100 border border-xl-200 flex items-center justify-center">${art(p.id,'w-10 h-8')}</div>
+  <div class="flex-1 min-w-0"><p class="font-semibold truncate">${p.name}</p><p class="text-slate-500 font-mono">${money(p.price)} c/u</p></div>
+  <div class="flex items-center gap-1.5">
+  <button onclick="changeQty(${p.id},-1)" class="w-6 h-6 rounded-md bg-xl-100 hover:bg-xl-200 text-xl-800 font-bold">−</button>
+  <span class="font-mono w-4 text-center">${q}</span>
+  <button onclick="changeQty(${p.id},1)" class="w-6 h-6 rounded-md bg-xl-100 hover:bg-xl-200 text-xl-800 font-bold">+</button>
+  </div>
+  <strong class="font-mono w-16 text-right">${money(p.price*q)}</strong></div>`
+ }).join(''):`<div class="text-center py-6 text-slate-400"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-10 h-10 mx-auto mb-2 text-xl-300">${ICONS.cart}</svg><p class="text-xs">Tu carrito está vacío.</p></div>`;
+
+ const c=calculate();
+ $('summary-subtotal').textContent=money(c.subtotal);
+ $('summary-discount').textContent='-'+money(c.discount);
+ $('summary-decorators').textContent='+'+money(c.extras);
+ $('summary-tax').textContent=money(c.tax);
+ tween($('summary-total'),c.total);tween($('status-total'),c.total);
+ $('formula-bar').textContent=`=(${c.subtotal.toFixed(2)} − ${c.discount.toFixed(2)} + ${c.extras.toFixed(2)}) × 1.15`;
+ $('btn-proceed-checkout').disabled=!entries.length;
+}
+
+function openCheckoutModal(){
+ if(!Object.keys(cart).length)return;
+ $('checkout-total').textContent=money(calculate().total);
+ $('checkout-form-wrap').classList.remove('hidden');
+ $('checkout-success').classList.add('hidden');
+ $('checkout-modal').classList.remove('hidden');
+ $('checkout-modal').classList.add('flex')
+}
+function closeCheckoutModal(){$('checkout-modal').classList.add('hidden');$('checkout-modal').classList.remove('flex')}
+
+function processCheckout(event){
+ event.preventDefault();
+ const name=$('customer-name').value.trim(),email=$('customer-email').value.trim(),method=$('payment-method').value,c=calculate();
+ if(!name||!email)return;
+ $('checkout-form-wrap').classList.add('hidden');
+ $('checkout-success').classList.remove('hidden');
+ $('success-message').textContent=`Gracias, ${name}. Tu pedido de demostración fue registrado correctamente.`;
+ $('invoice-summary').innerHTML=`<p><strong>Cliente:</strong> ${escapeHtml(name)}</p>
+ <p><strong>Correo:</strong> ${escapeHtml(email)}</p>
+ <p><strong>Método:</strong> ${escapeHtml(method)}</p>
+ <hr class="my-2 border-xl-200">
+ <p>Subtotal: ${money(c.subtotal)}</p>
+ <p>Descuento: -${money(c.discount)}</p>
+ <p>Servicios: ${money(c.extras)}</p>
+ <p>IVA (15%): ${money(c.tax)}</p>
+ <p class="font-bold text-xl-700 text-sm mt-2">TOTAL: ${money(c.total)}</p>
+ <p class="text-slate-500 mt-2">Comprobante académico no tributario.</p>`;
+ cartSubject.notify('PEDIDO DE PRUEBA REGISTRADO',`Total ${money(c.total)}`)
+}
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function finishOrder(){
+ cart={};lastId=null;renderCart();closeCheckoutModal();$('checkout-form').reset();
+ cartSubject.notify('PROCESO FINALIZADO','Pedido de demostración completado')
+}
+function clearConsoleLog(){$('observer-logs').innerHTML='<div class="text-xl-300/60">// Registro de auditoría limpiado.</div>'}
+
+hydrate();renderProducts();renderCart();
+</script>
+</body>
+</html>
